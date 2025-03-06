@@ -1,4 +1,4 @@
-// Função para analisar frequências entre sequências de dígitos
+
 // Função para analisar frequências entre sequências de dígitos
 function analisarFrequenciaEntreSequencias() {
     console.log("Função analisarFrequenciaEntreSequencias chamada");
@@ -169,14 +169,10 @@ function gerarSaidaAnaliseFrequencia(estatisticas) {
         container = document.createElement('div');
         container.id = 'frequencia-analise-container';
         container.className = 'statistics-container';
-
-/*
         
         // Inserir após o container de combinações existente
         const combinationAnalysis = document.getElementById('combinationAnalysis');
-       
-
-	   if (combinationAnalysis) {
+        if (combinationAnalysis) {
             combinationAnalysis.parentNode.insertBefore(container, combinationAnalysis.nextSibling);
         } else {
             // Alternativa: inserir antes da tabela de resultados
@@ -189,8 +185,6 @@ function gerarSaidaAnaliseFrequencia(estatisticas) {
             }
         }
     }
-	
-*/
     
     // Limpar o container existente
     container.innerHTML = '';
@@ -663,11 +657,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 originalOnClick.call(this, e);
             }
             
+            
             // Esperar pelo carregamento dos dados (2 segundos)
             setTimeout(function() {
                 analisarFrequenciaEntreSequencias();
             }, 2000);
         };
+        
         
         // Adicionar botão específico para análise de frequência
         const actionsDiv = document.querySelector('.actions');

@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # URL fixa da API para evitar problemas com variáveis de ambiente
-API_BASE_URL = "https://loteriascaixa-api.herokuapp.com/api"
+API_BASE_URL = "https://loteriascaixa-api.herokuapp.com/api/"
 
 # Configurações do Redis
 REDIS_HOST = os.getenv('REDIS_HOST')

@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from app import app
 from dotenv import load_dotenv, find_dotenv
 import redis
@@ -31,7 +31,7 @@ try:
 
 except Exception as e:
     print(f"❌ Erro ao conectar ao Redis: {type(e).__name__} - {e}")
-    print("⚠️ Prosseguindo sem conexão com Redis. O aplicativo usará cache em memória.")
+
 
 # Configurar logging
 logging.basicConfig(
@@ -45,7 +45,14 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
 if __name__ == '__main__':
     logger.info("Iniciando aplicação...")
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
+  
+"""
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+"""

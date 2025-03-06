@@ -14,7 +14,6 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-
 /* Indicadores visuais de rolagem horizontal */
 .table-responsive::after {
     content: "";
@@ -71,6 +70,7 @@
         justify-content: center;
     }
 }
+
 /* Ajustes para tornar tabelas mais compactas em telas pequenas 
 @media screen and (max-width: 768px) {
     .table-responsive table {
@@ -106,10 +106,6 @@
     .table-responsive th {
         background-color: #45A049;
     }
-	responsive td{
-		background-color:black;
-	}
-	
 }
 
 /* Para telas menores que 768px (tablets e celulares grandes) */
@@ -165,5 +161,3 @@
         background-color: #2E7D32;
     }
 }
-
-

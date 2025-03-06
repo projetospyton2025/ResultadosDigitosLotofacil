@@ -1,1105 +1,1063 @@
-// Script para análise de dígitos da Lotofácil
-// Variáveis para armazenar os resultados e estatísticas
-let allResults = [];
-let filteredResults = [];
-let digitStats = {};
-let combinationStats = {};
-
-// Executar quando o documento estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Documento carregado, inicializando scripts");
-    
-    // Referências aos botões
     const loadButton = document.getElementById('loadButton');
     const downloadCSVButton = document.getElementById('downloadCSV');
     const downloadJSONButton = document.getElementById('downloadJSON');
     const downloadTXTButton = document.getElementById('downloadTXT');
     
+    let allResults = [];
+    let filteredResults = [];
+    let digitStats = {};
+    let combinationStats = {};
+    
     // Registrar eventos de clique
-    if (loadButton) loadButton.addEventListener('click', fetchDigitosResults);
-    if (downloadCSVButton) downloadCSVButton.addEventListener('click', downloadCSV);
-    if (downloadJSONButton) downloadJSONButton.addEventListener('click', downloadJSON);
-    if (downloadTXTButton) downloadTXTButton.addEventListener('click', downloadTXT);
+    loadButton.addEventListener('click', fetchDigitosResults);
+    downloadCSVButton.addEventListener('click', downloadCSV);
+    downloadJSONButton.addEventListener('click', downloadJSON);
+    downloadTXTButton.addEventListener('click', downloadTXT);
     
-    // Carregar os resultados automaticamente
-    console.log("Agendando carregamento automático de resultados");
-    setTimeout(fetchDigitosResults, 500);
-});
-
-// Função para buscar os resultados da API
-async function fetchDigitosResults() {
-    console.log("Função fetchDigitosResults iniciada");
+    // Chamar fetchDigitosResults automaticamente quando a página carregar
+    fetchDigitosResults();
     
-    const loadButton = document.getElementById('loadButton');
-    const loadingMessage = document.getElementById('loadingMessage');
-    const completedMessage = document.getElementById('completedMessage');
-    const tableBody = document.getElementById('lotofacilResults').getElementsByTagName('tbody')[0];
-    const digitFrequencyDiv = document.getElementById('digitFrequency');
-    const digitChartDiv = document.getElementById('digitChart');
-    const combinationAnalysisDiv = document.getElementById('combinationAnalysis');
-    const filterContainerDiv = document.getElementById('filterContainer');
-    
-    // Desabilitar o botão enquanto carrega
-    if (loadButton) {
-        loadButton.disabled = true;
-        loadButton.style.opacity = '0.6';
-        loadButton.style.cursor = 'not-allowed';
-    }
-    
-    // Mostrar mensagem de carregamento
-    if (loadingMessage) loadingMessage.style.display = 'block';
-    if (completedMessage) completedMessage.style.display = 'none';
-    
-    // Limpar áreas de conteúdo
-    if (tableBody) tableBody.innerHTML = '';
-    if (digitFrequencyDiv) digitFrequencyDiv.innerHTML = '';
-    if (digitChartDiv) digitChartDiv.innerHTML = '';
-    if (combinationAnalysisDiv) combinationAnalysisDiv.innerHTML = '';
-    if (filterContainerDiv) filterContainerDiv.innerHTML = '';
-    
-    try {
-        // Buscar dados da API
-        console.log("Iniciando fetch de dados...");
-        const response = await fetch('/api/digitos');
-        console.log("Status da resposta:", response.status);
+    // Função para buscar os resultados
+    async function fetchDigitosResults() {
+        console.log("Função fetchDigitosResults iniciada");
         
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Erro na resposta:", errorText);
-            throw new Error(`Erro ao acessar a API. Status: ${response.status}`);
-        }
+        const loadButton = document.getElementById('loadButton');
         
-        // Processar os dados recebidos
-        const data = await response.json();
-        console.log("Dados recebidos:", data);
-        
-        if (data.resultados && Array.isArray(data.resultados)) {
-            allResults = data.resultados;
-            filteredResults = [...allResults];
-            digitStats = data.frequencia_digitos;
-            
-            // Compartilhar no escopo global para outros scripts
-            window.allResults = allResults;
-            window.filteredResults = filteredResults;
-            window.digitStats = digitStats;
-            
-            // Analisar e renderizar os dados
-            analisarCombinacoes(allResults);
-            renderFilterOptions();
-            renderResults(filteredResults);
-            renderDigitStats(digitStats);
-            renderCombinationAnalysis();
-        } else {
-            console.error("Formato inválido:", data);
-            throw new Error('Formato de dados inválido.');
-        }
-    } catch (error) {
-        console.error("Erro detalhado:", error);
-        alert('Erro ao buscar os resultados: ' + error.message);
-    } finally {
-        // Ocultar mensagem de carregamento
-        if (loadingMessage) loadingMessage.style.display = 'none';
-        if (completedMessage) completedMessage.style.display = 'block';
-        
-        // Reabilitar o botão
+        // Desabilitar o botão enquanto carrega
         if (loadButton) {
-            loadButton.disabled = false;
-            loadButton.style.opacity = '1';
-            loadButton.style.cursor = 'pointer';
+            loadButton.disabled = true;
+            loadButton.style.opacity = '0.6';
+            loadButton.style.cursor = 'not-allowed';
         }
-    }
-}
-
-// Função para analisar combinações de dígitos
-function analisarCombinacoes(results) {
-    combinationStats = {
-        porQuantidade: {}, // Agrupar por quantidade de dígitos
-        combinacoesFrequentes: {}, // Combinações mais frequentes
-        digitosExclusivos: {} // Dígitos que aparecem apenas em alguns sorteios
-    };
-    
-    // Agrupar resultados por quantidade de dígitos
-    results.forEach(result => {
-        const qtd = result.contagem_digitos;
-        if (!combinationStats.porQuantidade[qtd]) {
-            combinationStats.porQuantidade[qtd] = [];
-        }
-        combinationStats.porQuantidade[qtd].push(result);
-    });
-    
-    // Encontrar combinações frequentes
-    results.forEach(result => {
-        const combinacao = result.digitos_ordenados.join(',');
-        if (!combinationStats.combinacoesFrequentes[combinacao]) {
-            combinationStats.combinacoesFrequentes[combinacao] = {
-                combinacao: combinacao,
-                concursos: [],
-                digitos: result.digitos_ordenados,
-                quantidade: result.contagem_digitos
-            };
-        }
-        combinationStats.combinacoesFrequentes[combinacao].concursos.push(result.concurso);
-    });
-    
-    // Ordenar combinações por frequência
-    combinationStats.combinacoesFrequentes = Object.values(combinationStats.combinacoesFrequentes)
-        .sort((a, b) => b.concursos.length - a.concursos.length);
-    
-    // Analisar similaridades entre combinações
-    for (let i = 0; i < combinationStats.combinacoesFrequentes.length; i++) {
-        const combo = combinationStats.combinacoesFrequentes[i];
-        combo.similares = [];
         
-        for (let j = 0; j < combinationStats.combinacoesFrequentes.length; j++) {
-            if (i === j) continue;
+        const loadingMessage = document.getElementById('loadingMessage');
+        const completedMessage = document.getElementById('completedMessage');
+        const tableBody = document.getElementById('lotofacilResults').getElementsByTagName('tbody')[0];
+        const digitFrequencyDiv = document.getElementById('digitFrequency');
+        const digitChartDiv = document.getElementById('digitChart');
+        const combinationAnalysisDiv = document.getElementById('combinationAnalysis');
+        const filterContainerDiv = document.getElementById('filterContainer');
+        
+        loadingMessage.style.display = 'block';
+        completedMessage.style.display = 'none';
+        tableBody.innerHTML = '';
+        digitFrequencyDiv.innerHTML = '';
+        digitChartDiv.innerHTML = '';
+        combinationAnalysisDiv.innerHTML = '';
+        filterContainerDiv.innerHTML = '';
+        
+        try {
+            console.log("Iniciando fetch de dados...");
+            const response = await fetch('/api/digitos');
+            console.log("Status da resposta:", response.status);
             
-            const outroCombo = combinationStats.combinacoesFrequentes[j];
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("Erro na resposta:", errorText);
+                throw new Error(`Erro ao acessar a API. Status: ${response.status}`);
+            }
             
-            // Comparar os dígitos
-            const digitosCombo = new Set(combo.digitos);
-            const digitosOutroCombo = new Set(outroCombo.digitos);
+            const data = await response.json();
+            console.log("Dados recebidos:", data);
             
-            // Diferenças
-            const digitosExclusivosCombo1 = [...digitosCombo].filter(d => !digitosOutroCombo.has(d));
-            const digitosExclusivosCombo2 = [...digitosOutroCombo].filter(d => !digitosCombo.has(d));
+            if (data.resultados && Array.isArray(data.resultados)) {
+                allResults = data.resultados;
+                window.allResults = allResults;
+                window.digitStats = digitStats;
+                
+                filteredResults = [...allResults]; // Inicialmente, todos os resultados
+                digitStats = data.frequencia_digitos;
+                
+                // Analisar combinações de dígitos
+                analisarCombinacoes(allResults);
+                
+                // Renderizar tudo
+                renderFilterOptions();
+                renderResults(filteredResults);
+                renderDigitStats(digitStats);
+                renderCombinationAnalysis();
+            } else {
+                console.error("Formato inválido:", data);
+                throw new Error('Formato de dados inválido.');
+            }
+        } catch (error) {
+            console.error("Erro detalhado:", error);
+            alert('Erro ao buscar os resultados: ' + error.message);
+        } finally {
+            loadingMessage.style.display = 'none';
+            completedMessage.style.display = 'block';
             
-            // Interseção
-            const digitosComuns = [...digitosCombo].filter(d => digitosOutroCombo.has(d));
-            
-            // Se tem similaridade significativa (mais de 70% em comum)
-            if (digitosComuns.length >= combo.digitos.length * 0.7) {
-                combo.similares.push({
-                    concursos: outroCombo.concursos,
-                    digitosComuns: digitosComuns,
-                    digitosDiferentes: {
-                        de: digitosExclusivosCombo1,
-                        para: digitosExclusivosCombo2
-                    }
-                });
+            // Reabilitar o botão quando o carregamento terminar
+            if (loadButton) {
+                loadButton.disabled = false;
+                loadButton.style.opacity = '1';
+                loadButton.style.cursor = 'pointer';
             }
         }
-        
-        // Limitar a 5 combinações similares por combinação
-        combo.similares = combo.similares.slice(0, 5);
     }
     
-    // Calcular estatísticas adicionais para as combinações frequentes
-    combinationStats.combinacoesFrequentes.forEach(combo => {
-        // Ordenar concursos
-        combo.concursos.sort((a, b) => a - b);
-        
-        // Calcular intervalos
-        const intervalos = [];
-        for (let i = 1; i < combo.concursos.length; i++) {
-            intervalos.push(combo.concursos[i] - combo.concursos[i-1]);
-        }
-        
-        if (intervalos.length > 0) {
-            combo.intervalos = intervalos;
-            combo.mediaIntervalos = Math.round(intervalos.reduce((a, b) => a + b, 0) / intervalos.length);
-            combo.menorIntervalo = Math.min(...intervalos);
-            combo.maiorIntervalo = Math.max(...intervalos);
-            combo.ultimoIntervalo = intervalos[intervalos.length - 1];
-        }
-    });
-    
-    // Limitar as combinações mais frequentes às top 10
-    combinationStats.combinacoesFrequentes = combinationStats.combinacoesFrequentes.slice(0, 10);
-    
-    // Compartilhar resultados analisados no escopo global para uso pelo resumo-simples.js
-    window.combinationStats = combinationStats;
-    window.resultadosAnalisados = {
-        combinacoesOrdenadas: combinationStats.combinacoesFrequentes,
-        mediaGeral: combinationStats.combinacoesFrequentes.reduce((acc, c) => acc + (c.mediaIntervalos || 0), 0) / 
-                  combinationStats.combinacoesFrequentes.filter(c => c.mediaIntervalos).length
-    };
-}
-
-// Função para renderizar opções de filtro
-function renderFilterOptions() {
-    const filterContainerDiv = document.getElementById('filterContainer');
-    if (!filterContainerDiv) return;
-    
-    // Clear filter container
-    filterContainerDiv.innerHTML = '';
-    
-    // Criar o título
-    const filterTitle = document.createElement('h3');
-    filterTitle.textContent = 'Filtros';
-    filterContainerDiv.appendChild(filterTitle);
-    
-    // Criar container de filtros
-    const filtersDiv = document.createElement('div');
-    filtersDiv.className = 'filters';
-    
-    // 1. Filtro por quantidade de dígitos
-    const qtdDigitosDiv = document.createElement('div');
-    qtdDigitosDiv.className = 'filter-item';
-    
-    const qtdDigitosLabel = document.createElement('label');
-    qtdDigitosLabel.textContent = 'Qtd. Dígitos: ';
-    
-    const qtdDigitosSelect = document.createElement('select');
-    qtdDigitosSelect.id = 'qtdDigitosFilter';
-    
-    // Opção "Todos"
-    const optionTodos = document.createElement('option');
-    optionTodos.value = '';
-    optionTodos.textContent = 'Todos';
-    qtdDigitosSelect.appendChild(optionTodos);
-    
-    // Quantidades disponíveis
-    const quantidades = Object.keys(combinationStats.porQuantidade)
-        .sort((a, b) => parseInt(a) - parseInt(b));
-    
-    quantidades.forEach(qtd => {
-        const option = document.createElement('option');
-        option.value = qtd;
-        option.textContent = `${qtd} dígitos (${combinationStats.porQuantidade[qtd].length} resultados)`;
-        qtdDigitosSelect.appendChild(option);
-    });
-    
-    qtdDigitosDiv.appendChild(qtdDigitosLabel);
-    qtdDigitosDiv.appendChild(qtdDigitosSelect);
-    
-    // 2. Filtro por dígito específico
-    const digitoEspecificoDiv = document.createElement('div');
-    digitoEspecificoDiv.className = 'filter-item';
-    
-    const digitoEspecificoLabel = document.createElement('label');
-    digitoEspecificoLabel.textContent = 'Contém Dígito: ';
-    
-    const digitoEspecificoSelect = document.createElement('select');
-    digitoEspecificoSelect.id = 'digitoEspecificoFilter';
-    
-    // Opção "Todos"
-    const optionTodosDigitos = document.createElement('option');
-    optionTodosDigitos.value = '';
-    optionTodosDigitos.textContent = 'Todos';
-    digitoEspecificoSelect.appendChild(optionTodosDigitos);
-    
-    // Listar todos os dígitos ordenados por frequência
-    const digitosPorFrequencia = Object.entries(digitStats)
-        .sort((a, b) => b[1] - a[1]);
-    
-    digitosPorFrequencia.forEach(([digito, frequencia]) => {
-        const option = document.createElement('option');
-        option.value = digito;
-        option.textContent = `Dígito ${digito} (${frequencia} ocorrências)`;
-        digitoEspecificoSelect.appendChild(option);
-    });
-    
-    digitoEspecificoDiv.appendChild(digitoEspecificoLabel);
-    digitoEspecificoDiv.appendChild(digitoEspecificoSelect);
-    
-    // 3. Botão de aplicar filtro
-    const aplicarFiltroBtn = document.createElement('button');
-    aplicarFiltroBtn.textContent = 'Aplicar Filtros';
-    aplicarFiltroBtn.className = 'button';
-    aplicarFiltroBtn.onclick = aplicarFiltros;
-    
-    // 4. Botão de limpar filtro
-    const limparFiltroBtn = document.createElement('button');
-    limparFiltroBtn.textContent = 'Limpar Filtros';
-    limparFiltroBtn.className = 'button';
-    limparFiltroBtn.onclick = limparFiltros;
-    
-    // Adicionar todos os elementos ao container
-    filtersDiv.appendChild(qtdDigitosDiv);
-    filtersDiv.appendChild(digitoEspecificoDiv);
-    filtersDiv.appendChild(aplicarFiltroBtn);
-    filtersDiv.appendChild(limparFiltroBtn);
-    
-    filterContainerDiv.appendChild(filtersDiv);
-}
-
-// Função para aplicar filtros
-function aplicarFiltros() {
-    const qtdDigitosFilter = document.getElementById('qtdDigitosFilter').value;
-    const digitoEspecificoFilter = document.getElementById('digitoEspecificoFilter').value;
-    
-    filteredResults = [...allResults]; // Reiniciar com todos os resultados
-    
-    // Aplicar filtro de quantidade de dígitos
-    if (qtdDigitosFilter) {
-        filteredResults = filteredResults.filter(
-            result => result.contagem_digitos == parseInt(qtdDigitosFilter)
-        );
-    }
-    
-    // Aplicar filtro de dígito específico
-    if (digitoEspecificoFilter) {
-        filteredResults = filteredResults.filter(
-            result => result.digitos_ordenados.includes(digitoEspecificoFilter)
-        );
-    }
-    
-    // Renderizar resultados filtrados
-    renderResults(filteredResults);
-    
-    // Atualizar mensagem de resultados
-    const resultadosInfo = document.getElementById('resultadosInfo');
-    if (resultadosInfo) {
-        resultadosInfo.textContent = `Exibindo ${filteredResults.length} de ${allResults.length} resultados`;
-    }
-}
-
-// Função para limpar filtros
-function limparFiltros() {
-    document.getElementById('qtdDigitosFilter').value = '';
-    document.getElementById('digitoEspecificoFilter').value = '';
-    
-    filteredResults = [...allResults]; // Reiniciar com todos os resultados
-    renderResults(filteredResults);
-    
-    // Atualizar mensagem de resultados
-    const resultadosInfo = document.getElementById('resultadosInfo');
-    if (resultadosInfo) {
-        resultadosInfo.textContent = `Exibindo ${filteredResults.length} de ${allResults.length} resultados`;
-    }
-}
-
-// Função para renderizar a análise de combinações
-function renderCombinationAnalysis() {
-    const combinationAnalysisDiv = document.getElementById('combinationAnalysis');
-    if (!combinationAnalysisDiv) return;
-    
-    // Título da seção
-    const title = document.createElement('h3');
-    title.textContent = 'Análise de Combinações de Dígitos';
-    combinationAnalysisDiv.appendChild(title);
-    
-    // 1. Combinações mais frequentes
-    const combinacoesFrequentesTitle = document.createElement('h4');
-    combinacoesFrequentesTitle.textContent = 'Combinações Mais Frequentes';
-    combinationAnalysisDiv.appendChild(combinacoesFrequentesTitle);
-    
-    const combinacoesTable = document.createElement('table');
-    combinacoesTable.className = 'combinations-table';
-    
-    // Cabeçalho da tabela - 4 COLUNAS
-    const headerRow = document.createElement('tr');
-    [
-        'Combinação', 
-        'Qtd. Dígitos', 
-        'Frequência',
-        'Detalhes'
-    ].forEach(text => {
-        const th = document.createElement('th');
-        th.textContent = text;
-        headerRow.appendChild(th);
-    });
-    combinacoesTable.appendChild(headerRow);
-    
-    // Dados da tabela - 4 COLUNAS
-    combinationStats.combinacoesFrequentes.forEach(combo => {
-        const row = document.createElement('tr');
-        
-        // Combinação
-        const tdCombo = document.createElement('td');
-        tdCombo.textContent = combo.digitos.join(',');
-        row.appendChild(tdCombo);
-        
-        // Quantidade de dígitos
-        const tdQtd = document.createElement('td');
-        tdQtd.textContent = combo.quantidade;
-        row.appendChild(tdQtd);
-        
-        // Frequência (número de concursos)
-        const tdFreq = document.createElement('td');
-        tdFreq.textContent = combo.concursos.length;
-        row.appendChild(tdFreq);
-        
-        // Botão para ver detalhes
-        const tdDetails = document.createElement('td');
-        const detailsBtn = document.createElement('button');
-        detailsBtn.textContent = 'Ver Detalhes';
-        detailsBtn.className = 'details-button';
-        detailsBtn.onclick = () => {
-            mostrarDetalhesCombinacao(combo);
+    // Função para analisar combinações de dígitos
+    function analisarCombinacoes(results) {
+        combinationStats = {
+            porQuantidade: {}, // Agrupar por quantidade de dígitos
+            combinacoesFrequentes: {}, // Combinações mais frequentes
+            digitosExclusivos: {} // Dígitos que aparecem apenas em alguns sorteios
         };
-        tdDetails.appendChild(detailsBtn);
-        row.appendChild(tdDetails);
         
-        combinacoesTable.appendChild(row);
-    });
-    
-    combinationAnalysisDiv.appendChild(combinacoesTable);
-    
-    // 2. Resumo por quantidade de dígitos
-    const resumoQtdTitle = document.createElement('h4');
-    resumoQtdTitle.textContent = 'Resumo por Quantidade de Dígitos';
-    combinationAnalysisDiv.appendChild(resumoQtdTitle);
-    
-    const resumoTable = document.createElement('table');
-    resumoTable.className = 'summary-table';
-    
-    // Cabeçalho da tabela
-    const resumoHeader = document.createElement('tr');
-    ['Qtd. Dígitos', 'Número de Sorteios', 'Porcentagem'].forEach(text => {
-        const th = document.createElement('th');
-        th.textContent = text;
-        resumoHeader.appendChild(th);
-    });
-    resumoTable.appendChild(resumoHeader);
-    
-    // Dados da tabela
-    const qtdKeys = Object.keys(combinationStats.porQuantidade)
-        .sort((a, b) => parseInt(a) - parseInt(b));
-    
-    qtdKeys.forEach(qtd => {
-        const row = document.createElement('tr');
-        
-        // Quantidade de dígitos
-        const tdQtd = document.createElement('td');
-        tdQtd.textContent = qtd;
-        row.appendChild(tdQtd);
-        
-        // Número de sorteios
-        const count = combinationStats.porQuantidade[qtd].length;
-        const tdCount = document.createElement('td');
-        tdCount.textContent = count;
-        row.appendChild(tdCount);
-        
-        // Porcentagem
-        const percentage = ((count / allResults.length) * 100).toFixed(2);
-        const tdPercentage = document.createElement('td');
-        tdPercentage.textContent = `${percentage}%`;
-        row.appendChild(tdPercentage);
-        
-        resumoTable.appendChild(row);
-    });
-    
-    combinationAnalysisDiv.appendChild(resumoTable);
-}
-
-// Função para mostrar detalhes de uma combinação
-function mostrarDetalhesCombinacao(combo) {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    
-    const modalContent = document.createElement('div');
-    modalContent.className = 'modal-content';
-    
-    // Fechar modal
-    const closeBtn = document.createElement('span');
-    closeBtn.className = 'close-button';
-    closeBtn.innerHTML = '&times;';
-    closeBtn.onclick = () => {
-        document.body.removeChild(modal);
-    };
-    
-    // Título
-    const title = document.createElement('h3');
-    title.textContent = `Detalhes da Combinação: ${combo.digitos.join(',')}`;
-    
-    // Informações básicas
-    const infoDiv = document.createElement('div');
-    infoDiv.className = 'combo-info';
-    
-    infoDiv.innerHTML = `
-        <p><strong>Quantidade de dígitos:</strong> ${combo.quantidade}</p>
-        <p><strong>Aparece em ${combo.concursos.length} concursos:</strong> ${combo.concursos.slice(0, 20).join(', ')}${combo.concursos.length > 20 ? '...' : ''}</p>
-        <p><strong>Média de intervalo:</strong> ${combo.mediaIntervalos || '-'} concursos</p>
-        <p><strong>Menor intervalo:</strong> ${combo.menorIntervalo || '-'} concursos</p>
-        <p><strong>Maior intervalo:</strong> ${combo.maiorIntervalo || '-'} concursos</p>
-        <p><strong>Último intervalo:</strong> ${combo.ultimoIntervalo || '-'} concursos</p>
-    `;
-    
-    // Intervalos entre concursos
-    if (combo.intervalos && combo.intervalos.length > 0) {
-        const intervalosDiv = document.createElement('div');
-        intervalosDiv.className = 'intervalos-info';
-        
-        const intervalosTitle = document.createElement('h4');
-        intervalosTitle.textContent = 'Intervalos entre Concursos';
-        intervalosDiv.appendChild(intervalosTitle);
-        
-        const intervalosTable = document.createElement('table');
-        intervalosTable.className = 'intervalos-table';
-        
-        // Cabeçalho
-        const headerRow = document.createElement('tr');
-        ['De Concurso', 'Para Concurso', 'Intervalo'].forEach(text => {
-            const th = document.createElement('th');
-            th.textContent = text;
-            headerRow.appendChild(th);
+        // Agrupar resultados por quantidade de dígitos
+        results.forEach(result => {
+            const qtd = result.contagem_digitos;
+            if (!combinationStats.porQuantidade[qtd]) {
+                combinationStats.porQuantidade[qtd] = [];
+            }
+            combinationStats.porQuantidade[qtd].push(result);
         });
-        intervalosTable.appendChild(headerRow);
         
-        // Dados de intervalos
-        for (let i = 1; i < combo.concursos.length; i++) {
-            const row = document.createElement('tr');
+        // Encontrar combinações frequentes
+        results.forEach(result => {
+            const combinacao = result.digitos_ordenados.join(',');
+            if (!combinationStats.combinacoesFrequentes[combinacao]) {
+                combinationStats.combinacoesFrequentes[combinacao] = {
+                    combinacao: combinacao,
+                    concursos: [],
+                    digitos: result.digitos_ordenados,
+                    quantidade: result.contagem_digitos
+                };
+            }
+            combinationStats.combinacoesFrequentes[combinacao].concursos.push(result.concurso);
+        });
+        
+        // Ordenar combinações por frequência
+        combinationStats.combinacoesFrequentes = Object.values(combinationStats.combinacoesFrequentes)
+            .sort((a, b) => b.concursos.length - a.concursos.length);
+        
+        // Analisar similaridades e diferenças entre combinações
+        for (let i = 0; i < combinationStats.combinacoesFrequentes.length; i++) {
+            const combo = combinationStats.combinacoesFrequentes[i];
+            combo.similares = [];
             
-            // De concurso
-            const tdDe = document.createElement('td');
-            tdDe.textContent = combo.concursos[i-1];
-            row.appendChild(tdDe);
+            for (let j = 0; j < combinationStats.combinacoesFrequentes.length; j++) {
+                if (i === j) continue;
+                
+                const outroCombo = combinationStats.combinacoesFrequentes[j];
+                
+                // Comparar os dígitos
+                const digitosCombo = new Set(combo.digitos);
+                const digitosOutroCombo = new Set(outroCombo.digitos);
+                
+                // Diferenças
+                const digitosExclusivosCombo1 = [...digitosCombo].filter(d => !digitosOutroCombo.has(d));
+                const digitosExclusivosCombo2 = [...digitosOutroCombo].filter(d => !digitosCombo.has(d));
+                
+                // Interseção
+                const digitosComuns = [...digitosCombo].filter(d => digitosOutroCombo.has(d));
+                
+                // Se tem similaridade significativa (mais de 70% em comum)
+                if (digitosComuns.length >= combo.digitos.length * 0.7) {
+                    combo.similares.push({
+                        concursos: outroCombo.concursos,
+                        digitosComuns: digitosComuns,
+                        digitosDiferentes: {
+                            de: digitosExclusivosCombo1,
+                            para: digitosExclusivosCombo2
+                        }
+                    });
+                }
+            }
             
-            // Para concurso
-            const tdPara = document.createElement('td');
-            tdPara.textContent = combo.concursos[i];
-            row.appendChild(tdPara);
-            
-            // Intervalo
-            const tdIntervalo = document.createElement('td');
-            tdIntervalo.textContent = combo.concursos[i] - combo.concursos[i-1];
-            row.appendChild(tdIntervalo);
-            
-            intervalosTable.appendChild(row);
+            // Limitar a 5 combinações similares por combinação
+            combo.similares = combo.similares.slice(0, 5);
         }
         
-        intervalosDiv.appendChild(intervalosTable);
-        infoDiv.appendChild(intervalosDiv);
+        // Calcular estatísticas adicionais para as combinações frequentes
+        combinationStats.combinacoesFrequentes.forEach(combo => {
+            // Ordenar concursos
+            combo.concursos.sort((a, b) => a - b);
+            
+            // Calcular intervalos
+            const intervalos = [];
+            for (let i = 1; i < combo.concursos.length; i++) {
+                intervalos.push(combo.concursos[i] - combo.concursos[i-1]);
+            }
+            
+            if (intervalos.length > 0) {
+                combo.intervalos = intervalos;
+                combo.mediaIntervalos = Math.round(intervalos.reduce((a, b) => a + b, 0) / intervalos.length);
+                combo.menorIntervalo = Math.min(...intervalos);
+                combo.maiorIntervalo = Math.max(...intervalos);
+                combo.ultimoIntervalo = intervalos[intervalos.length - 1];
+            }
+        });
+        
+        // Limitar as combinações mais frequentes às top 10
+        combinationStats.combinacoesFrequentes = combinationStats.combinacoesFrequentes.slice(0, 10);
+        
+        // Compartilhar resultados analisados no escopo global para uso pelo resumo-simples.js
+        window.resultadosAnalisados = {
+            combinacoesOrdenadas: combinationStats.combinacoesFrequentes,
+            mediaGeral: combinationStats.combinacoesFrequentes.reduce((acc, c) => acc + (c.mediaIntervalos || 0), 0) / 
+                      combinationStats.combinacoesFrequentes.filter(c => c.mediaIntervalos).length
+        };
     }
     
-    // Combinações similares
-    const similaresDiv = document.createElement('div');
-    similaresDiv.className = 'similares-info';
+    // Função para renderizar opções de filtro
+    function renderFilterOptions() {
+        const filterContainerDiv = document.getElementById('filterContainer');
+        
+        // Clear filter container
+        filterContainerDiv.innerHTML = '';
+        
+        // Criar o título
+        const filterTitle = document.createElement('h3');
+        filterTitle.textContent = 'Filtros';
+        filterContainerDiv.appendChild(filterTitle);
+        
+        // Criar container de filtros
+        const filtersDiv = document.createElement('div');
+        filtersDiv.className = 'filters';
+        
+        // 1. Filtro por quantidade de dígitos
+        const qtdDigitosDiv = document.createElement('div');
+        qtdDigitosDiv.className = 'filter-item';
+        
+        const qtdDigitosLabel = document.createElement('label');
+        qtdDigitosLabel.textContent = 'Qtd. Dígitos: ';
+        
+        const qtdDigitosSelect = document.createElement('select');
+        qtdDigitosSelect.id = 'qtdDigitosFilter';
+        
+        // Opção "Todos"
+        const optionTodos = document.createElement('option');
+        optionTodos.value = '';
+        optionTodos.textContent = 'Todos';
+        qtdDigitosSelect.appendChild(optionTodos);
+        
+        // Quantidades disponíveis
+        const quantidades = Object.keys(combinationStats.porQuantidade)
+            .sort((a, b) => parseInt(a) - parseInt(b));
+        
+        quantidades.forEach(qtd => {
+            const option = document.createElement('option');
+            option.value = qtd;
+            option.textContent = `${qtd} dígitos (${combinationStats.porQuantidade[qtd].length} resultados)`;
+            qtdDigitosSelect.appendChild(option);
+        });
+        
+        qtdDigitosDiv.appendChild(qtdDigitosLabel);
+        qtdDigitosDiv.appendChild(qtdDigitosSelect);
+        
+        // 2. Filtro por dígito específico
+        const digitoEspecificoDiv = document.createElement('div');
+        digitoEspecificoDiv.className = 'filter-item';
+        
+        const digitoEspecificoLabel = document.createElement('label');
+        digitoEspecificoLabel.textContent = 'Contém Dígito: ';
+        
+        const digitoEspecificoSelect = document.createElement('select');
+        digitoEspecificoSelect.id = 'digitoEspecificoFilter';
+        
+        // Opção "Todos"
+        const optionTodosDigitos = document.createElement('option');
+        optionTodosDigitos.value = '';
+        optionTodosDigitos.textContent = 'Todos';
+        digitoEspecificoSelect.appendChild(optionTodosDigitos);
+        
+        // Listar todos os dígitos ordenados por frequência
+        const digitosPorFrequencia = Object.entries(digitStats)
+            .sort((a, b) => b[1] - a[1]);
+        
+        digitosPorFrequencia.forEach(([digito, frequencia]) => {
+            const option = document.createElement('option');
+            option.value = digito;
+            option.textContent = `Dígito ${digito} (${frequencia} ocorrências)`;
+            digitoEspecificoSelect.appendChild(option);
+        });
+        
+        digitoEspecificoDiv.appendChild(digitoEspecificoLabel);
+        digitoEspecificoDiv.appendChild(digitoEspecificoSelect);
+        
+        // 3. Botão de aplicar filtro
+        const aplicarFiltroBtn = document.createElement('button');
+        aplicarFiltroBtn.textContent = 'Aplicar Filtros';
+        aplicarFiltroBtn.className = 'button';
+        aplicarFiltroBtn.onclick = aplicarFiltros;
+        
+        // 4. Botão de limpar filtro
+        const limparFiltroBtn = document.createElement('button');
+        limparFiltroBtn.textContent = 'Limpar Filtros';
+        limparFiltroBtn.className = 'button';
+        limparFiltroBtn.onclick = limparFiltros;
+        
+        // Adicionar todos os elementos ao container
+        filtersDiv.appendChild(qtdDigitosDiv);
+        filtersDiv.appendChild(digitoEspecificoDiv);
+        filtersDiv.appendChild(aplicarFiltroBtn);
+        filtersDiv.appendChild(limparFiltroBtn);
+        
+        filterContainerDiv.appendChild(filtersDiv);
+    }
     
-    if (combo.similares && combo.similares.length > 0) {
-        const similaresTitle = document.createElement('h4');
-        similaresTitle.textContent = 'Combinações Similares';
-        similaresDiv.appendChild(similaresTitle);
+    // Função para aplicar filtros
+    function aplicarFiltros() {
+        const qtdDigitosFilter = document.getElementById('qtdDigitosFilter').value;
+        const digitoEspecificoFilter = document.getElementById('digitoEspecificoFilter').value;
         
-        const similaresTable = document.createElement('table');
-        similaresTable.className = 'similares-table';
+        filteredResults = [...allResults]; // Reiniciar com todos os resultados
         
-        // Cabeçalho
+        // Aplicar filtro de quantidade de dígitos
+        if (qtdDigitosFilter) {
+            filteredResults = filteredResults.filter(
+                result => result.contagem_digitos == parseInt(qtdDigitosFilter)
+            );
+        }
+        
+        // Aplicar filtro de dígito específico
+        if (digitoEspecificoFilter) {
+            filteredResults = filteredResults.filter(
+                result => result.digitos_ordenados.includes(digitoEspecificoFilter)
+            );
+        }
+        
+        // Renderizar resultados filtrados
+        renderResults(filteredResults);
+        
+        // Atualizar mensagem de resultados
+        const resultadosInfo = document.getElementById('resultadosInfo');
+        if (resultadosInfo) {
+            resultadosInfo.textContent = `Exibindo ${filteredResults.length} de ${allResults.length} resultados`;
+        }
+    }
+    
+    // Função para limpar filtros
+    function limparFiltros() {
+        document.getElementById('qtdDigitosFilter').value = '';
+        document.getElementById('digitoEspecificoFilter').value = '';
+        
+        filteredResults = [...allResults]; // Reiniciar com todos os resultados
+        renderResults(filteredResults);
+        
+        // Atualizar mensagem de resultados
+        const resultadosInfo = document.getElementById('resultadosInfo');
+        if (resultadosInfo) {
+            resultadosInfo.textContent = `Exibindo ${filteredResults.length} de ${allResults.length} resultados`;
+        }
+    }
+    
+    // Função para renderizar a análise de combinações
+    function renderCombinationAnalysis() {
+        const combinationAnalysisDiv = document.getElementById('combinationAnalysis');
+        
+        // Título da seção
+        const title = document.createElement('h3');
+        title.textContent = 'Análise de Combinações de Dígitos';
+        combinationAnalysisDiv.appendChild(title);
+        
+        // 1. Combinações mais frequentes
+        const combinacoesFrequentesTitle = document.createElement('h4');
+        combinacoesFrequentesTitle.textContent = 'Combinações Mais Frequentes';
+        combinationAnalysisDiv.appendChild(combinacoesFrequentesTitle);
+        
+        const combinacoesTable = document.createElement('table');
+        combinacoesTable.className = 'combinations-table';
+        
+        // Cabeçalho da tabela - 4 COLUNAS
         const headerRow = document.createElement('tr');
-        ['Dígitos Comuns', 'Dígitos Diferentes', 'Aparece em', 'Frequência'].forEach(text => {
+        [
+            'Combinação', 
+            'Qtd. Dígitos', 
+            'Frequência',
+            'Detalhes'
+        ].forEach(text => {
             const th = document.createElement('th');
             th.textContent = text;
             headerRow.appendChild(th);
         });
-        similaresTable.appendChild(headerRow);
+        combinacoesTable.appendChild(headerRow);
         
-        // Dados de combinações similares
-        combo.similares.forEach(similar => {
+        // Dados da tabela - 4 COLUNAS
+        combinationStats.combinacoesFrequentes.forEach(combo => {
             const row = document.createElement('tr');
             
-            // Dígitos comuns
-            const tdComuns = document.createElement('td');
-            tdComuns.textContent = similar.digitosComuns.join(',');
-            row.appendChild(tdComuns);
+            // Combinação
+            const tdCombo = document.createElement('td');
+            tdCombo.textContent = combo.digitos.join(',');
+            row.appendChild(tdCombo);
             
-            // Dígitos diferentes
-            const tdDiferentes = document.createElement('td');
-            tdDiferentes.innerHTML = `
-                <span class="diferencas">
-                    <span class="de">${similar.digitosDiferentes.de.join(',') || '-'}</span> →
-                    <span class="para">${similar.digitosDiferentes.para.join(',') || '-'}</span>
-                </span>
-            `;
-            row.appendChild(tdDiferentes);
+            // Quantidade de dígitos
+            const tdQtd = document.createElement('td');
+            tdQtd.textContent = combo.quantidade;
+            row.appendChild(tdQtd);
             
-            // Aparece em
-            const tdConcursos = document.createElement('td');
-            tdConcursos.textContent = similar.concursos.slice(0, 5).join(', ');
-            if (similar.concursos.length > 5) {
-                tdConcursos.textContent += ` (+ ${similar.concursos.length - 5} outros)`;
-            }
-            row.appendChild(tdConcursos);
-            
-            // Frequência
+            // Frequência (número de concursos)
             const tdFreq = document.createElement('td');
-            tdFreq.textContent = similar.concursos.length;
+            tdFreq.textContent = combo.concursos.length;
             row.appendChild(tdFreq);
             
-            similaresTable.appendChild(row);
+            // Botão para ver detalhes
+            const tdDetails = document.createElement('td');
+            const detailsBtn = document.createElement('button');
+            detailsBtn.textContent = 'Ver Detalhes';
+            detailsBtn.className = 'details-button';
+            detailsBtn.onclick = () => {
+                mostrarDetalhesCombinacao(combo);
+            };
+            tdDetails.appendChild(detailsBtn);
+            row.appendChild(tdDetails);
+            
+            combinacoesTable.appendChild(row);
         });
         
-        similaresDiv.appendChild(similaresTable);
-    } else {
-        similaresDiv.innerHTML = '<p>Nenhuma combinação similar encontrada.</p>';
+        combinationAnalysisDiv.appendChild(combinacoesTable);
+        
+        // 2. Resumo por quantidade de dígitos
+        const resumoQtdTitle = document.createElement('h4');
+        resumoQtdTitle.textContent = 'Resumo por Quantidade de Dígitos';
+        combinationAnalysisDiv.appendChild(resumoQtdTitle);
+        
+        const resumoTable = document.createElement('table');
+        resumoTable.className = 'summary-table';
+        
+        // Cabeçalho da tabela
+        const resumoHeader = document.createElement('tr');
+        ['Qtd. Dígitos', 'Número de Sorteios', 'Porcentagem'].forEach(text => {
+            const th = document.createElement('th');
+            th.textContent = text;
+            resumoHeader.appendChild(th);
+        });
+        resumoTable.appendChild(resumoHeader);
+        
+        // Dados da tabela
+        const qtdKeys = Object.keys(combinationStats.porQuantidade)
+            .sort((a, b) => parseInt(a) - parseInt(b));
+        
+        qtdKeys.forEach(qtd => {
+            const row = document.createElement('tr');
+            
+            // Quantidade de dígitos
+            const tdQtd = document.createElement('td');
+            tdQtd.textContent = qtd;
+            row.appendChild(tdQtd);
+            
+            // Número de sorteios
+            const count = combinationStats.porQuantidade[qtd].length;
+            const tdCount = document.createElement('td');
+            tdCount.textContent = count;
+            row.appendChild(tdCount);
+            
+            // Porcentagem
+            const percentage = ((count / allResults.length) * 100).toFixed(2);
+            const tdPercentage = document.createElement('td');
+            tdPercentage.textContent = `${percentage}%`;
+            row.appendChild(tdPercentage);
+            
+            resumoTable.appendChild(row);
+        });
+        
+        combinationAnalysisDiv.appendChild(resumoTable);
     }
     
-    // Adicionar todos os elementos ao modal
-    modalContent.appendChild(closeBtn);
-    modalContent.appendChild(title);
-    modalContent.appendChild(infoDiv);
-    modalContent.appendChild(similaresDiv);
-    
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
-    
-    // Fechar o modal ao clicar fora dele
-    window.onclick = (event) => {
-        if (event.target === modal) {
+    // Função para mostrar detalhes de uma combinação
+    function mostrarDetalhesCombinacao(combo) {
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        
+        // Fechar modal
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'close-button';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.onclick = () => {
             document.body.removeChild(modal);
-        }
-    };
-}
-
-// Função para renderizar os resultados na tabela
-function renderResults(results) {
-    const tableBody = document.getElementById('lotofacilResults')?.getElementsByTagName('tbody')[0];
-    if (!tableBody) return;
-    
-    tableBody.innerHTML = '';
-    
-    // Atualizar informação sobre resultados filtrados
-    let resultsInfoDiv = document.getElementById('resultadosInfo');
-    if (!resultsInfoDiv) {
-        resultsInfoDiv = document.createElement('div');
-        resultsInfoDiv.id = 'resultadosInfo';
-        resultsInfoDiv.className = 'results-info';
+        };
         
-        // Inserir antes da tabela
-        const tableContainer = document.getElementById('lotofacilResults')?.parentNode;
-        if (tableContainer) {
-            tableContainer.insertBefore(resultsInfoDiv, document.getElementById('lotofacilResults'));
-        }
-    }
-    
-    if (resultsInfoDiv) {
-        resultsInfoDiv.textContent = `Exibindo ${results.length} de ${allResults.length} resultados`;
-    }
-    
-    results.forEach(result => {
-        const row = tableBody.insertRow();
+        // Título
+        const title = document.createElement('h3');
+        title.textContent = `Detalhes da Combinação: ${combo.digitos.join(',')}`;
         
-        // Formatar data
-        const dataParts = result.data ? result.data.split('/') : ['', '', ''];
-        const dataFormatada = dataParts.length === 3 ? `${dataParts[0]}/${dataParts[1]}/${dataParts[2]}` : result.data;
+        // Informações básicas
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'combo-info';
         
-        row.innerHTML = `
-            <td>${result.concurso}</td>
-            <td>${dataFormatada}</td>
-            <td>${result.dezenas.join(' - ')}</td>
-            <td>${result.digitos_para_exibicao || result.digitos.join(' ')}</td>
-            <td>${result.digitos_ordenados.join(',')}</td>
-            <td>${result.contagem_digitos}</td>
-            <td>
-                <button class="copy-button" data-digits="${result.digitos_para_copia}">
-                    Copiar
-                </button>
-            </td>
+        infoDiv.innerHTML = `
+            <p><strong>Quantidade de dígitos:</strong> ${combo.quantidade}</p>
+            <p><strong>Aparece em ${combo.concursos.length} concursos:</strong> ${combo.concursos.slice(0, 20).join(', ')}${combo.concursos.length > 20 ? '...' : ''}</p>
+            <p><strong>Média de intervalo:</strong> ${combo.mediaIntervalos || '-'} concursos</p>
+            <p><strong>Menor intervalo:</strong> ${combo.menorIntervalo || '-'} concursos</p>
+            <p><strong>Maior intervalo:</strong> ${combo.maiorIntervalo || '-'} concursos</p>
+            <p><strong>Último intervalo:</strong> ${combo.ultimoIntervalo || '-'} concursos</p>
         `;
-    });
-    
-    // Adicionar event listeners para os botões de cópia
-    document.querySelectorAll('.copy-button').forEach(button => {
-        button.addEventListener('click', function() {
-            const digits = this.getAttribute('data-digits');
-            navigator.clipboard.writeText(digits)
-                .then(() => {
-                    // Feedback visual para o usuário
-                    const originalText = this.textContent;
-                    this.textContent = 'Copiado!';
-                    setTimeout(() => {
-                        this.textContent = originalText;
-                    }, 1500);
-                })
-                .catch(err => {
-                    console.error('Erro ao copiar: ', err);
-                    alert('Erro ao copiar os dígitos.');
-                });
-        });
-    });
-}
-
-// Função para renderizar estatísticas dos dígitos
-function renderDigitStats(stats) {
-    const digitFrequencyDiv = document.getElementById('digitFrequency');
-    const digitChartDiv = document.getElementById('digitChart');
-    
-    if (!digitFrequencyDiv || !digitChartDiv) return;
-    
-    digitFrequencyDiv.innerHTML = '';
-    digitChartDiv.innerHTML = '';
-    
-    // Ordenar os dígitos por frequência (do maior para o menor)
-    const sortedDigits = Object.entries(stats).sort((a, b) => b[1] - a[1]);
-    
-    // Criar visualização da frequência de dígitos - Ordenada por frequência
-    sortedDigits.forEach(([digit, count]) => {
-        const digitBox = document.createElement('div');
-        digitBox.className = 'digit-box';
-        digitBox.innerHTML = `${digit}<span class="digit-count">${count}</span>`;
-        digitFrequencyDiv.appendChild(digitBox);
-    });
-    
-    // Criar gráfico de barras para frequência de dígitos - Ordenado por frequência
-    const maxCount = Math.max(...Object.values(stats));
-    const chartHtml = sortedDigits.map(([digit, count]) => {
-        const percentage = (count / maxCount) * 100;
-        return `
-            <div style="margin: 10px 0;">
-                <div style="display: flex; align-items: center;">
-                    <div style="width: 20px; text-align: center;">${digit}</div>
-                    <div style="flex-grow: 1; margin: 0 10px;">
-                        <div style="background-color: #4CAF50; height: 20px; width: ${percentage}%;"></div>
-                    </div>
-                    <div style="width: 40px; text-align: right;">${count}</div>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    digitChartDiv.innerHTML = chartHtml;
-}
-
-// Funções para download
-function downloadCSV() {
-    if (allResults.length === 0) {
-        alert('Carregue os resultados primeiro!');
-        return;
-    }
-    
-    // Criando uma tabela HTML que o Excel pode importar corretamente
-    let excelContent = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-    excelContent += '<head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Dígitos Lotofácil</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
-    excelContent += '<style>th { background-color: #000000; color: #ffffff; text-align: left; font-weight: bold; } td { text-align: left; } .concurso { mso-number-format:"0"; }</style>';
-    excelContent += '</head>';
-    excelContent += '<body><table border="1">';
-    
-    // Adicionar cabeçalho com acentos corretos e formatação (fundo preto, fonte branca)
-    excelContent += '<tr>';
-    excelContent += '<th style="background-color: #000000; color: #ffffff;">Concurso</th>';
-    excelContent += '<th style="background-color: #000000; color: #ffffff;">Data</th>';
-    excelContent += '<th style="background-color: #000000; color: #ffffff;">Dezenas</th>';
-    excelContent += '<th style="background-color: #000000; color: #ffffff;">Dígitos</th>';
-    excelContent += '<th style="background-color: #000000; color: #ffffff;">Dígitos Ordenados</th>';
-    excelContent += '<th style="background-color: #000000; color: #ffffff;">Qtd. Dígitos</th>';
-    excelContent += '</tr>';
-    
-    // Adicionar dados (alinhados à esquerda)
-    filteredResults.forEach(result => {
-        excelContent += '<tr>';
-        excelContent += `<td class="concurso" style="text-align: left;">${result.concurso}</td>`;
-        excelContent += `<td style="text-align: left;">${result.data}</td>`;
-        excelContent += `<td style="text-align: left;">${result.dezenas.join(' - ')}</td>`;
-        excelContent += `<td style="text-align: left;">${result.digitos_para_exibicao || result.digitos.join(' ')}</td>`;
-        excelContent += `<td style="text-align: left;">${result.digitos_ordenados.join(',')}</td>`;
-        excelContent += `<td style="text-align: left;">${result.contagem_digitos}</td>`;
-        excelContent += '</tr>';
-    });
-    
-    excelContent += '</table></body></html>';
-    
-    // Criar o blob com tipo MIME para Excel
-    const blob = new Blob([excelContent], {type: 'application/vnd.ms-excel'});
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = 'analise_digitos_lotofacil.xls';
-    link.click();
-}
-
-function downloadJSON() {
-    if (allResults.length === 0) {
-        alert('Carregue os resultados primeiro!');
-        return;
-    }
-    
-    // Criar conteúdo HTML formatado
-    let htmlContent = `
-    <!DOCTYPE html>
-    <html lang="pt-br">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Análise de Dígitos da Lotofácil</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                margin: 0;
-                padding: 20px;
-                background-color: #f0f8ff;
-                color: #333;
-            }
-            .container {
-                max-width: 1200px;
-                margin: 0 auto;
-                padding: 20px;
-                background-color: white;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                border-radius: 5px;
-            }
-            h1, h2, h3 {
-                color: #006400;
-                text-align: center;
-            }
-            .section {
-                margin-bottom: 30px;
-                padding: 15px;
-                background-color: #f9f9f9;
-                border-radius: 5px;
-                border: 1px solid #ddd;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 15px 0;
-            }
-            th {
-                background-color: #000000;
-                color: white;
-                padding: 10px;
-                text-align: left;
-            }
-            td {
-                padding: 8px;
-                border: 1px solid #ddd;
-                text-align: left;
-            }
-            tr:nth-child(even) {
-                background-color: #f2f2f2;
-            }
-            .digit-box {
-                display: inline-block;
-                width: 40px;
-                height: 40px;
-                line-height: 40px;
-                text-align: center;
-                margin: 5px;
-                background-color: #4CAF50;
-                color: white;
-                border-radius: 50%;
-                font-weight: bold;
-            }
-            .digit-count {
-                font-size: 12px;
-                color: #666;
-                display: block;
-                text-align: center;
-            }
-            .footer {
-                text-align: center;
-                margin-top: 20px;
-                font-size: 12px;
-                color: #666;
-                padding: 10px;
-                border-top: 1px solid #ddd;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Análise de Dígitos da Lotofácil</h1>
+        
+        // Intervalos entre concursos
+        if (combo.intervalos && combo.intervalos.length > 0) {
+            const intervalosDiv = document.createElement('div');
+            intervalosDiv.className = 'intervalos-info';
             
-            <div class="section">
-                <h2>Estatísticas de Frequência dos Dígitos</h2>
-                <div style="display: flex; justify-content: center; flex-wrap: wrap; margin: 20px 0;">
-    `;
-    
-    // Adicionar estatísticas de dígitos
-    const sortedDigits = Object.entries(digitStats).sort((a, b) => b[1] - a[1]);
-    sortedDigits.forEach(([digit, count]) => {
-        htmlContent += `
-            <div class="digit-box">${digit}
-                <span class="digit-count">${count} vezes</span>
-            </div>
-        `;
-    });
-    
-    htmlContent += `
-                </div>
+            const intervalosTitle = document.createElement('h4');
+            intervalosTitle.textContent = 'Intervalos entre Concursos';
+            intervalosDiv.appendChild(intervalosTitle);
+            
+            const intervalosTable = document.createElement('table');
+            intervalosTable.className = 'intervalos-table';
+            
+            // Cabeçalho
+            const headerRow = document.createElement('tr');
+            ['De Concurso', 'Para Concurso', 'Intervalo'].forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+            intervalosTable.appendChild(headerRow);
+            
+            // Dados de intervalos
+            for (let i = 1; i < combo.concursos.length; i++) {
+                const row = document.createElement('tr');
                 
-                <h3>Gráfico de Frequência</h3>
-                <div style="padding: 15px;">
-    `;
-    
-    // Adicionar gráfico de barras simples
-    const maxCount = Math.max(...Object.values(digitStats));
-    sortedDigits.forEach(([digit, count]) => {
-        const percentage = (count / maxCount) * 100;
-        htmlContent += `
-            <div style="margin: 10px 0; display: flex; align-items: center;">
-                <div style="width: 30px; text-align: center; font-weight: bold;">${digit}</div>
-                <div style="flex-grow: 1; margin: 0 10px;">
-                    <div style="background-color: #4CAF50; height: 24px; width: ${percentage}%;"></div>
-                </div>
-                <div style="width: 60px; text-align: right;">${count}</div>
-            </div>
-        `;
-    });
-    
-    htmlContent += `
-                </div>
-            </div>
+                // De concurso
+                const tdDe = document.createElement('td');
+                tdDe.textContent = combo.concursos[i-1];
+                row.appendChild(tdDe);
+                
+                // Para concurso
+                const tdPara = document.createElement('td');
+                tdPara.textContent = combo.concursos[i];
+                row.appendChild(tdPara);
+                
+                // Intervalo
+                const tdIntervalo = document.createElement('td');
+                tdIntervalo.textContent = combo.concursos[i] - combo.concursos[i-1];
+                row.appendChild(tdIntervalo);
+                
+                intervalosTable.appendChild(row);
+            }
             
-            <div class="section">
-                <h2>Resumo por Quantidade de Dígitos</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Qtd. Dígitos</th>
-                            <th>Número de Sorteios</th>
-                            <th>Porcentagem</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-    
-    // Adicionar resumo por quantidade de dígitos
-    const qtdKeys = Object.keys(combinationStats.porQuantidade)
-        .sort((a, b) => parseInt(a) - parseInt(b));
-    
-    qtdKeys.forEach(qtd => {
-        const count = combinationStats.porQuantidade[qtd].length;
-        const percentage = ((count / allResults.length) * 100).toFixed(2);
-        htmlContent += `
-            <tr>
-                <td>${qtd}</td>
-                <td>${count}</td>
-                <td>${percentage}%</td>
-            </tr>
-        `;
-    });
-    
-    htmlContent += `
-                    </tbody>
-                </table>
-            </div>
+            intervalosDiv.appendChild(intervalosTable);
+            infoDiv.appendChild(intervalosDiv);
+        }
+        
+        // Combinações similares
+        const similaresDiv = document.createElement('div');
+        similaresDiv.className = 'similares-info';
+        
+        if (combo.similares && combo.similares.length > 0) {
+            const similaresTitle = document.createElement('h4');
+            similaresTitle.textContent = 'Combinações Similares';
+            similaresDiv.appendChild(similaresTitle);
             
-            <div class="section">
-                <h2>Combinações Mais Frequentes</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Combinação</th>
-                            <th>Qtd. Dígitos</th>
-                            <th>Frequência</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-    
-    // Adicionar combinações mais frequentes
-    combinationStats.combinacoesFrequentes.slice(0, 10).forEach(combo => {
-        htmlContent += `
-            <tr>
-                <td>${combo.digitos.join(',')}</td>
-                <td>${combo.quantidade}</td>
-                <td>${combo.concursos.length}</td>
-            </tr>
-        `;
-    });
-    
-    htmlContent += `
-                    </tbody>
-                </table>
-            </div>
+            const similaresTable = document.createElement('table');
+            similaresTable.className = 'similares-table';
             
-            <div class="section">
-                <h2>Resultados Detalhados</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Concurso</th>
-                            <th>Data</th>
-                            <th>Dezenas</th>
-                            <th>Dígitos</th>
-                            <th>Dígitos Ordenados</th>
-                            <th>Qtd. Dígitos</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
+            // Cabeçalho
+            const headerRow = document.createElement('tr');
+            ['Dígitos Comuns', 'Dígitos Diferentes', 'Aparece em', 'Frequência'].forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+            similaresTable.appendChild(headerRow);
+            
+            // Dados de combinações similares
+            combo.similares.forEach(similar => {
+                const row = document.createElement('tr');
+                
+                // Dígitos comuns
+                const tdComuns = document.createElement('td');
+                tdComuns.textContent = similar.digitosComuns.join(',');
+                row.appendChild(tdComuns);
+                
+                // Dígitos diferentes
+                const tdDiferentes = document.createElement('td');
+                tdDiferentes.innerHTML = `
+                    <span class="diferencas">
+                        <span class="de">${similar.digitosDiferentes.de.join(',') || '-'}</span> →
+                        <span class="para">${similar.digitosDiferentes.para.join(',') || '-'}</span>
+                    </span>
+                `;
+                row.appendChild(tdDiferentes);
+                
+                // Aparece em
+                const tdConcursos = document.createElement('td');
+                tdConcursos.textContent = similar.concursos.slice(0, 5).join(', ');
+                if (similar.concursos.length > 5) {
+                    tdConcursos.textContent += ` (+ ${similar.concursos.length - 5} outros)`;
+                }
+                row.appendChild(tdConcursos);
+                
+                // Frequência
+                const tdFreq = document.createElement('td');
+                tdFreq.textContent = similar.concursos.length;
+                row.appendChild(tdFreq);
+                
+                similaresTable.appendChild(row);
+            });
+            
+            similaresDiv.appendChild(similaresTable);
+        } else {
+            similaresDiv.innerHTML = '<p>Nenhuma combinação similar encontrada.</p>';
+        }
+        
+        // Adicionar todos os elementos ao modal
+        modalContent.appendChild(closeBtn);
+        modalContent.appendChild(title);
+        modalContent.appendChild(infoDiv);
+        modalContent.appendChild(similaresDiv);
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Fechar o modal ao clicar fora dele
+        window.onclick = (event) => {
+            if (event.target === modal) {
+                document.body.removeChild(modal);
+            }
+        };
+    }
     
-    // Adicionar resultados detalhados
-    filteredResults.forEach(result => {
-        htmlContent += `
-            <tr>
+    // Função para renderizar os resultados na tabela
+    function renderResults(results) {
+        const tableBody = document.getElementById('lotofacilResults').getElementsByTagName('tbody')[0];
+        tableBody.innerHTML = '';
+        
+        // Atualizar informação sobre resultados filtrados
+        const resultsInfoDiv = document.getElementById('resultadosInfo');
+        if (!resultsInfoDiv) {
+            const infoDiv = document.createElement('div');
+            infoDiv.id = 'resultadosInfo';
+            infoDiv.className = 'results-info';
+            infoDiv.textContent = `Exibindo ${results.length} de ${allResults.length} resultados`;
+            
+            // Inserir antes da tabela
+            const tableContainer = document.getElementById('lotofacilResults').parentNode;
+            tableContainer.insertBefore(infoDiv, document.getElementById('lotofacilResults'));
+        } else {
+            resultsInfoDiv.textContent = `Exibindo ${results.length} de ${allResults.length} resultados`;
+        }
+        
+        results.forEach(result => {
+            const row = tableBody.insertRow();
+            
+            // Formatar data
+            const dataParts = result.data ? result.data.split('/') : ['', '', ''];
+            const dataFormatada = dataParts.length === 3 ? `${dataParts[0]}/${dataParts[1]}/${dataParts[2]}` : result.data;
+            
+            row.innerHTML = `
                 <td>${result.concurso}</td>
-                <td>${result.data || ''}</td>
+                <td>${dataFormatada}</td>
                 <td>${result.dezenas.join(' - ')}</td>
                 <td>${result.digitos_para_exibicao || result.digitos.join(' ')}</td>
                 <td>${result.digitos_ordenados.join(',')}</td>
                 <td>${result.contagem_digitos}</td>
-            </tr>
-        `;
-    });
-    
-    htmlContent += `
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="footer">
-                <p>Relatório gerado em: ${new Date().toLocaleString('pt-BR')}</p>
-                <p>Total de resultados analisados: ${allResults.length}</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    `;
-    
-    // Criar o blob com tipo MIME para HTML
-    const blob = new Blob([htmlContent], {type: 'text/html;charset=utf-8'});
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = 'analise_digitos_lotofacil.html';
-    link.click();
-}
-
-function downloadTXT() {
-    if (allResults.length === 0) {
-        alert('Carregue os resultados primeiro!');
-        return;
+                <td>
+                    <button class="copy-button" data-digits="${result.digitos_para_copia}">
+                        Copiar
+                    </button>
+                </td>
+            `;
+        });
+        
+        // Adicionar event listeners para os botões de cópia
+        document.querySelectorAll('.copy-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const digits = this.getAttribute('data-digits');
+                navigator.clipboard.writeText(digits)
+                    .then(() => {
+                        // Feedback visual para o usuário
+                        const originalText = this.textContent;
+                        this.textContent = 'Copiado!';
+                        setTimeout(() => {
+                            this.textContent = originalText;
+                        }, 1500);
+                    })
+                    .catch(err => {
+                        console.error('Erro ao copiar: ', err);
+                        alert('Erro ao copiar os dígitos.');
+                    });
+            });
+        });
     }
     
-    let txtContent = "Análise de Dígitos da Lotofácil\n\n";
+    // Função para renderizar estatísticas dos dígitos
+    function renderDigitStats(stats) {
+        const digitFrequencyDiv = document.getElementById('digitFrequency');
+        const digitChartDiv = document.getElementById('digitChart');
+        
+        digitFrequencyDiv.innerHTML = '';
+        digitChartDiv.innerHTML = '';
+        
+        // Ordenar os dígitos por frequência (do maior para o menor)
+        const sortedDigits = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+        
+        // Criar visualização da frequência de dígitos - Ordenada por frequência
+        sortedDigits.forEach(([digit, count]) => {
+            const digitBox = document.createElement('div');
+            digitBox.className = 'digit-box';
+            digitBox.innerHTML = `${digit}<span class="digit-count">${count}</span>`;
+            digitFrequencyDiv.appendChild(digitBox);
+        });
+        
+        // Criar gráfico de barras para frequência de dígitos - Ordenado por frequência
+        const maxCount = Math.max(...Object.values(stats));
+        const chartHtml = sortedDigits.map(([digit, count]) => {
+            const percentage = (count / maxCount) * 100;
+            return `
+                <div style="margin: 10px 0;">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 20px; text-align: center;">${digit}</div>
+                        <div style="flex-grow: 1; margin: 0 10px;">
+                            <div style="background-color: #4CAF50; height: 20px; width: ${percentage}%;"></div>
+                        </div>
+                        <div style="width: 40px; text-align: right;">${count}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        digitChartDiv.innerHTML = chartHtml;
+    }
     
-    // Adicionar estatísticas - ordenar por frequência para o arquivo TXT também
-    txtContent += "ESTATÍSTICAS DE FREQUÊNCIA DOS DÍGITOS (ORDEM DECRESCENTE):\n";
-    const sortedStats = Object.entries(digitStats).sort((a, b) => b[1] - a[1]);
-    sortedStats.forEach(([digit, count]) => {
-         txtContent += `Dígito ${digit}: ${count} ocorrências\n`;
-    });
+    // Funções para download
+    function downloadCSV() {
+        if (allResults.length === 0) {
+            alert('Carregue os resultados primeiro!');
+            return;
+        }
+        
+        // Criando uma tabela HTML que o Excel pode importar corretamente
+        let excelContent = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+        excelContent += '<head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Dígitos Lotofácil</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+        excelContent += '<style>th { background-color: #000000; color: #ffffff; text-align: left; font-weight: bold; } td { text-align: left; } .concurso { mso-number-format:"0"; }</style>';
+        excelContent += '</head>';
+        excelContent += '<body><table border="1">';
+        
+        // Adicionar cabeçalho com acentos corretos e formatação (fundo preto, fonte branca)
+        excelContent += '<tr>';
+        excelContent += '<th style="background-color: #000000; color: #ffffff;">Concurso</th>';
+        excelContent += '<th style="background-color: #000000; color: #ffffff;">Data</th>';
+        excelContent += '<th style="background-color: #000000; color: #ffffff;">Dezenas</th>';
+        excelContent += '<th style="background-color: #000000; color: #ffffff;">Dígitos</th>';
+        excelContent += '<th style="background-color: #000000; color: #ffffff;">Dígitos Ordenados</th>';
+        excelContent += '<th style="background-color: #000000; color: #ffffff;">Qtd. Dígitos</th>';
+        excelContent += '</tr>';
+        
+        // Adicionar dados (alinhados à esquerda)
+        filteredResults.forEach(result => {
+            excelContent += '<tr>';
+            excelContent += `<td class="concurso" style="text-align: left;">${result.concurso}</td>`;
+            excelContent += `<td style="text-align: left;">${result.data}</td>`;
+            excelContent += `<td style="text-align: left;">${result.dezenas.join(' - ')}</td>`;
+            excelContent += `<td style="text-align: left;">${result.digitos_para_exibicao || result.digitos.join(' ')}</td>`;
+            excelContent += `<td style="text-align: left;">${result.digitos_ordenados.join(',')}</td>`;
+            excelContent += `<td style="text-align: left;">${result.contagem_digitos}</td>`;
+            excelContent += '</tr>';
+        });
+        
+        excelContent += '</table></body></html>';
+        
+        // Criar o blob com tipo MIME para Excel
+        const blob = new Blob([excelContent], {type: 'application/vnd.ms-excel'});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = 'analise_digitos_lotofacil.xls';
+        link.click();
+    }
+   
+    function downloadJSON() {
+        if (allResults.length === 0) {
+            alert('Carregue os resultados primeiro!');
+            return;
+        }
+        
+        // Criar conteúdo HTML formatado
+        let htmlContent = `
+        <!DOCTYPE html>
+        <html lang="pt-br">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Análise de Dígitos da Lotofácil</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 20px;
+                    background-color: #f0f8ff;
+                    color: #333;
+                }
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background-color: white;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                    border-radius: 5px;
+                }
+                h1, h2, h3 {
+                    color: #006400;
+                    text-align: center;
+                }
+                .section {
+                    margin-bottom: 30px;
+                    padding: 15px;
+                    background-color: #f9f9f9;
+                    border-radius: 5px;
+                    border: 1px solid #ddd;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 15px 0;
+                }
+                th {
+                    background-color: #000000;
+                    color: white;
+                    padding: 10px;
+                    text-align: left;
+                }
+                td {
+                    padding: 8px;
+                    border: 1px solid #ddd;
+                    text-align: left;
+                }
+                tr:nth-child(even) {
+                    background-color: #f2f2f2;
+                }
+                .digit-box {
+                    display: inline-block;
+                    width: 40px;
+                    height: 40px;
+                    line-height: 40px;
+                    text-align: center;
+                    margin: 5px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border-radius: 50%;
+                    font-weight: bold;
+                }
+                .digit-count {
+                    font-size: 12px;
+                    color: #666;
+                    display: block;
+                    text-align: center;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 20px;
+                    font-size: 12px;
+                    color: #666;
+                    padding: 10px;
+                    border-top: 1px solid #ddd;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Análise de Dígitos da Lotofácil</h1>
+                
+                <div class="section">
+                    <h2>Estatísticas de Frequência dos Dígitos</h2>
+                    <div style="display: flex; justify-content: center; flex-wrap: wrap; margin: 20px 0;">
+        `;
+        
+        // Adicionar estatísticas de dígitos
+        const sortedDigits = Object.entries(digitStats).sort((a, b) => b[1] - a[1]);
+        sortedDigits.forEach(([digit, count]) => {
+            htmlContent += `
+                <div class="digit-box">${digit}
+                    <span class="digit-count">${count} vezes</span>
+                </div>
+            `;
+        });
+        
+        htmlContent += `
+                    </div>
+                    
+                    <h3>Gráfico de Frequência</h3>
+                    <div style="padding: 15px;">
+        `;
+        
+        // Adicionar gráfico de barras simples
+        const maxCount = Math.max(...Object.values(digitStats));
+        sortedDigits.forEach(([digit, count]) => {
+            const percentage = (count / maxCount) * 100;
+            htmlContent += `
+                <div style="margin: 10px 0; display: flex; align-items: center;">
+                    <div style="width: 30px; text-align: center; font-weight: bold;">${digit}</div>
+                    <div style="flex-grow: 1; margin: 0 10px;">
+                        <div style="background-color: #4CAF50; height: 24px; width: ${percentage}%;"></div>
+                    </div>
+                    <div style="width: 60px; text-align: right;">${count}</div>
+                </div>
+            `;
+        });
+        
+        htmlContent += `
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>Resumo por Quantidade de Dígitos</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Qtd. Dígitos</th>
+                                <th>Número de Sorteios</th>
+                                <th>Porcentagem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        // Adicionar resumo por quantidade de dígitos
+        const qtdKeys = Object.keys(combinationStats.porQuantidade)
+            .sort((a, b) => parseInt(a) - parseInt(b));
+        
+        qtdKeys.forEach(qtd => {
+            const count = combinationStats.porQuantidade[qtd].length;
+            const percentage = ((count / allResults.length) * 100).toFixed(2);
+            htmlContent += `
+                <tr>
+                    <td>${qtd}</td>
+                    <td>${count}</td>
+                    <td>${percentage}%</td>
+                </tr>
+            `;
+        });
+        
+        htmlContent += `
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="section">
+                    <h2>Combinações Mais Frequentes</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Combinação</th>
+                                <th>Qtd. Dígitos</th>
+                                <th>Frequência</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        // Adicionar combinações mais frequentes
+        combinationStats.combinacoesFrequentes.slice(0, 10).forEach(combo => {
+            htmlContent += `
+                <tr>
+                    <td>${combo.digitos.join(',')}</td>
+                    <td>${combo.quantidade}</td>
+                    <td>${combo.concursos.length}</td>
+                </tr>
+            `;
+        });
+        
+        htmlContent += `
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="section">
+                    <h2>Resultados Detalhados</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Concurso</th>
+                                <th>Data</th>
+                                <th>Dezenas</th>
+                                <th>Dígitos</th>
+                                <th>Dígitos Ordenados</th>
+                                <th>Qtd. Dígitos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        // Adicionar resultados detalhados
+        filteredResults.forEach(result => {
+            htmlContent += `
+                <tr>
+                    <td>${result.concurso}</td>
+                    <td>${result.data || ''}</td>
+                    <td>${result.dezenas.join(' - ')}</td>
+                    <td>${result.digitos_para_exibicao || result.digitos.join(' ')}</td>
+                    <td>${result.digitos_ordenados.join(',')}</td>
+                    <td>${result.contagem_digitos}</td>
+                </tr>
+            `;
+        });
+        
+        htmlContent += `
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="footer">
+                    <p>Relatório gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+                    <p>Total de resultados analisados: ${allResults.length}</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
+        
+        // Criar o blob com tipo MIME para HTML
+        const blob = new Blob([htmlContent], {type: 'text/html;charset=utf-8'});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = 'analise_digitos_lotofacil.html';
+        link.click();
+    }    
     
-    // Adicionar resumo de combinações
-    txtContent += "\n\nRESUMO POR QUANTIDADE DE DÍGITOS:\n";
-    const qtdKeys = Object.keys(combinationStats.porQuantidade)
-        .sort((a, b) => parseInt(a) - parseInt(b));
-    
-    qtdKeys.forEach(qtd => {
-        const count = combinationStats.porQuantidade[qtd].length;
-        const percentage = ((count / allResults.length) * 100).toFixed(2);
-        txtContent += `${qtd} dígitos: ${count} sorteios (${percentage}%)\n`;
-    });
-    
-    // Adicionar combinações mais frequentes
-    txtContent += "\n\nCOMBINAÇÕES MAIS FREQUENTES:\n";
-    combinationStats.combinacoesFrequentes.slice(0, 5).forEach((combo, index) => {
-        txtContent += `${index + 1}. Combinação [${combo.digitos.join(',')}]: Aparece em ${combo.concursos.length} sorteios\n`;
-    });
-    
-    txtContent += "\n\nRESULTADOS DETALHADOS:\n";
-    filteredResults.forEach(result => {
-        const digitos = result.digitos_para_exibicao || result.digitos.join(' ');
-        const digitosOrdenados = result.digitos_ordenados.join(',');
-        txtContent += `Concurso: ${result.concurso} | Data: ${result.data} | Dezenas: ${result.dezenas.join('-')} | `;
-        txtContent += `Dígitos: ${digitos} | Ordenados: ${digitosOrdenados} | `;
-        txtContent += `Quantidade: ${result.contagem_digitos}\n`;
-    });
-    
-    // Criar o blob com tipo MIME para texto
-    const blob = new Blob([txtContent], {type: 'text/plain;charset=utf-8'});
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = 'analise_digitos_lotofacil.txt';
-    link.click();
-}
+    function downloadTXT() {
+        if (allResults.length === 0) {
+            alert('Carregue os resultados primeiro!');
+            return;
+        }
+        
+        let txtContent = "Análise de Dígitos da Lotofácil\n\n";
+        
+        // Adicionar estatísticas - ordenar por frequência para o arquivo TXT também
+        txtContent += "ESTATÍSTICAS DE FREQUÊNCIA DOS DÍGITOS (ORDEM DECRESCENTE):\n";
+        const sortedStats = Object.entries(digitStats).sort((a, b) => b[1] - a[1]);
+        sortedStats.forEach(([digit, count]) => {
+            txtContent += `Dígito ${digit}: ${count} ocorrências\n`;
+        });
+        
+        // Adicionar resumo de combinações
+        txtContent += "\n\nRESUMO POR QUANTIDADE DE DÍGITOS:\n";
+        const qtdKeys = Object.keys(combinationStats.porQuantidade)
+            .sort((a, b) => parseInt(a) - parseInt(b));
+        
+        qtdKeys.forEach(qtd => {
+            const count = combinationStats.porQuantidade[qtd].length;
+            const percentage = ((count / allResults.length) * 100).toFixed(2);
+            txtContent += `${qtd} dígitos: ${count} sorteios (${percentage}%)\n`;
+        });
+        
+        // Adicionar combinações mais frequentes
+        txtContent += "\n\nCOMBINAÇÕES MAIS FREQUENTES:\n";
+        combinationStats.combinacoesFrequentes.slice(0, 5).forEach((combo, index) => {
+            txtContent += `${index + 1}. Combinação [${combo.digitos.join(',')}]: Aparece em ${combo.concursos.length} sorteios\n`;
+        });
+        
+        txtContent += "\n\nRESULTADOS DETALHADOS:\n";
+        filteredResults.forEach(result => {
+            const digitos = result.digitos_para_exibicao || result.digitos.join(' ');
+            const digitosOrdenados = result.digitos_ordenados.join(',');
+            txtContent += `Concurso: ${result.concurso} | Data: ${result.data} | Dezenas: ${result.dezenas.join('-')} | `;
+            txtContent += `Dígitos: ${digitos} | Ordenados: ${digitosOrdenados} | `;
+            txtContent += `Quantidade: ${result.contagem_digitos}\n`;
+        });
+        
+        // Criar o blob com tipo MIME para texto
+        const blob = new Blob([txtContent], {type: 'text/plain;charset=utf-8'});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = 'analise_digitos_lotofacil.txt';
+        link.click();
+    }
 
-// Carregamento inicial quando a página carregar
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("Documento carregado, inicializando scripts");
-    
-    // Referências aos botões
-    const loadButton = document.getElementById('loadButton');
-    const downloadCSVButton = document.getElementById('downloadCSV');
-    const downloadJSONButton = document.getElementById('downloadJSON');
-    const downloadTXTButton = document.getElementById('downloadTXT');
-    
-    // Registrar eventos de clique
-    if (loadButton) loadButton.addEventListener('click', fetchDigitosResults);
-    if (downloadCSVButton) downloadCSVButton.addEventListener('click', downloadCSV);
-    if (downloadJSONButton) downloadJSONButton.addEventListener('click', downloadJSON);
-    if (downloadTXTButton) downloadTXTButton.addEventListener('click', downloadTXT);
-    
-    // Carregar os resultados automaticamente
-   // console.log("Agendando carregamento automático de resultados");
-   // setTimeout(fetchDigitosResults, 500);
 });

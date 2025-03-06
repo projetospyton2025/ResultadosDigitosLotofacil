@@ -66,8 +66,7 @@ th, td {
     padding: 10px;
     text-align: center;
     border: 1px solid #4CAF50;
-    font-size: clamp(8px, 2vw, 10px) !important;
-	
+    font-size: small;
 }
 
 th {
