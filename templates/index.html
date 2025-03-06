@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dígitos Lotofácil</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/popup-style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tabelas-responsivas.css') }}">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Análise de Dígitos da <span class="destaque">Lotofácil</span></h1>
+        
+        <div class="centralizado">
+            <p>Análise dos dígitos de todos os sorteios da Lotofácil</p>
+        </div>
+
+        <div class="actions">
+            <button class="button" id="loadButton">Carregar Resultados</button>
+        </div>
+
+        <div id="loadingMessage" class="loading" style="display: none;">Carregando resultados...</div>
+        <div id="completedMessage" class="completed" style="display: none;">Carregamento concluído!</div>
+
+        <!-- Nova seção de filtros -->
+        <div id="filterContainer" class="filter-container">
+            <!-- Será preenchido via JavaScript -->
+        </div>
+
+        <!-- Estatísticas de Dígitos -->
+        <div class="statistics-container">
+            <h2>Estatísticas de Dígitos</h2>
+            <div id="digitStats" class="digit-stats">
+                <div class="digit-frequency">
+                    <h3>Frequência de Dígitos</h3>
+                    <div id="digitFrequency"></div>
+                </div>
+                <div class="digit-charts">
+                    <h3>Gráfico de Frequência</h3>
+                    <div id="digitChart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nova seção de análise de combinações -->
+        <div id="combinationAnalysis" class="combination-analysis">
+            <!-- Será preenchido via JavaScript -->
+        </div>
+
+        <!-- Tabela de Resultados -->
+        <h2>Resultados Detalhados</h2>
+        <table id="lotofacilResults">
+            <thead>
+                <tr>
+                    <th>Concurso</th>
+                    <th>Data</th>
+                    <th>Dezenas</th>
+                    <th>Dígitos</th>
+                    <th>Dígitos Ordenados</th>
+                    <th>Qtd. Dígitos</th>
+                    <th>Copiar</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+        <!-- Botões de Download -->
+        <div class="download-buttons">
+            <button class="button" id="downloadCSV">Baixar XLS</button>
+            <button class="button" id="downloadJSON">Baixar HTML</button>
+            <button class="button" id="downloadTXT">Baixar TXT</button>
+        </div>
+    </div>
+
+    <footer>Feito por: <i>Márcio Fernando Maia - Todos os direitos reservados - 2025</i></footer>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/highlight-max.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/frequency-analysis.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/popup-explicacao.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/resumo-simples.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/tabelas-responsivas.js') }}"></script>
+</body>
+</html>

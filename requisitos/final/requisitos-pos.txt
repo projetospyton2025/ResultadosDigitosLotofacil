@@ -1,0 +1,6 @@
+Combinação: "0,1,2,3,5,7,9" (mantido igual)
+Frequência: 22 (mantido igual)
+Intervalo Médio: 41 
+Menor Intervalo: 3 
+Maior Intervalo: 121 
+Último Intervalo: 38 
